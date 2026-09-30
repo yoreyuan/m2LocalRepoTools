@@ -2,11 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"os"
 	"strings"
-	"yoreyuan/deploy-maven-localRepository/pkg/cmd"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+
+	"yoreyuan/m2LocalRepoTools/pkg/cmd"
 )
 
 func init() {

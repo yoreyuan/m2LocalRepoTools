@@ -3,19 +3,24 @@ verbose: false
 logLevel: "INFO"
 
 # The path to the local repository maven will use to store artifacts
+#localRepository: "~/.m2/repository/org/antlr/"
 localRepository: "~/.m2/repository"
 
-deploy:
-  enable: true
-  commandName: "/usr/local/bin/mvn"
-  # Alternate path for the user settings file
-  settingXml: "~/.m2/settings.xml"
-  # The ID of the repository
-  id: "yore_nexus"
-  # The URL of the repository maven
-  url: "http://nexus.yore.cn/repository/maven-releases"
-  # Output maven debugging information
-  debug: false
+push:
+  # The URL of the nexus releases repository (releases only, optional)
+  releaseUrl: "http://localhost:8081/repository/maven-releases"
+  # The URL of the nexus snapshots repository (snapshots only, optional)
+  snapshotsUrl: "http://localhost:8081/repository/maven-snapshots"
+  # The URL of the nexus mixed repository (releases and snapshots, optional)
+  # mixedUrl: "http://localhost:8081/repository/maven-mixed"
+  # At least one of releaseUrl, snapshotsUrl or mixedUrl must be configured
+  # Priority: releaseUrl > mixedUrl for releases; snapshotsUrl > mixedUrl for snapshots
+
+  # Nexus authentication
+  username: "admin"
+  password: "admin123"
+  # Number of parallel upload workers
+  worker: 4
 
   # The list of file suffixes to be ignored
   excludeSuffixs:
@@ -30,9 +35,9 @@ deploy:
     - ".xml"
 
 clean:
-  # If it is in cleaning mode, the list of file suffixes that will be cleaned up
-  enable: false
+  # The list of file suffixes that will be cleaned up
   suffixs:
     - ".DS_Store"
     - ".lastUpdated"
-
+  dirRegex:
+    - "${*.version}"

@@ -1,43 +1,49 @@
-tools-maven-localRepository
-============================
+m2LocalRepoTools
+================
 
-A maven localRepository tools, the main functions are as follows:
-* Support **publishing local packages** to Maven repository
-* Support **clearing files** with specified suffix in local repository
-* Supports specifying values through parameters (**Deprecated**)
-* Supports specifying parameters through yaml files
+[中文文档](README_CN.md)
 
+A tool to push local Maven repository artifacts to a Nexus private server via HTTP API with parallel uploading support.
 
-# 1 dev
+# 0 Features
+* **Push local artifacts** to Nexus repository via RESTful API (no Maven/JDK required)
+* Auto-detect **releases / snapshots** versions and upload to the corresponding repository
+* **Clean files** with specified suffixes in local repository
+* **Parallel uploading** with configurable worker pool
+* Configure via YAML file or CLI parameters
+
+# 1 Build
 ```bash
-# encoding
-
 # build
-go build -mod=vendor -ldflags="-s -w" -v -o tools_localRepo ./main.go
+go build -ldflags="-s -w" -v -o m2LocalRepoTools ./main.go
 
-# package
-# It will generate the 'tools_maven_localRepository-bin.zip' file
+# package (generates m2LocalRepoTools-bin.zip with multi-arch multi-os binaries)
 ./build.sh
-
 ```
 
-The 'tools_maven_localRepository-bin.zip' directories are described as follows：
+## Package Structure
 ```
-tools_maven_localRepository
-├── config.yaml.template    # APP configuration file template
-├── darwin-amd64    # Mac OS
-│   └── tools_localRepo
-├── linux-amd64     # linux OS
-│   └── tools_localRepo
-├── readme.md
-├── settings.xml.template       # maven settings.xml template
-└── windows-amd64   # Windows OS
-    └── tools_localRepo
-
+m2LocalRepoTools
+├── config.yaml.template    # configuration template
+├── README.md               # English documentation
+├── README_CN.md            # Chinese documentation
+├── darwin-amd64/           # macOS (Intel)
+│   └── m2LocalRepoTools
+├── darwin-arm64/           # macOS (Apple Silicon)
+│   └── m2LocalRepoTools
+├── linux-amd64/            # Linux (x86_64)
+│   └── m2LocalRepoTools
+├── linux-arm64/            # Linux (ARM64)
+│   └── m2LocalRepoTools
+├── linux-arm/              # Linux (ARM)
+│   └── m2LocalRepoTools
+├── windows-amd64/          # Windows (x86_64)
+│   └── m2LocalRepoTools.exe
+└── windows-arm64/          # Windows (ARM64)
+    └── m2LocalRepoTools.exe
 ```
 
-
-# 2 Support
+# 2 Supported Artifact Types
 | packaging      | classifier      | example                                               |
 |----------------|-----------------|-------------------------------------------------------|
 | `${packaging}` | `${classifier}` | `${artifactId}-${version}-${classifier}.${packaging}` |
@@ -50,73 +56,79 @@ tools_maven_localRepository
 | uexe           | -               | credValidator-2.3.0.uexe                              |
 | exe            | linux-x86_64    | protoc-3.21.7-linux-x86_64.exe                        |
 
-
-Folders with the following suffixes are ignored
-* `.DS_Store`
-* `.lastUpdated`
-* `.md5`
-* `.repositories`
-* `.sha1`
-* `.sha256`
-* `.sha512`
-* `.xml`
-
+The following file suffixes are ignored during upload:
+`.DS_Store`, `.asc`, `.lastUpdated`, `.md5`, `.repositories`, `.sha1`, `.sha256`, `.sha512`, `.xml`
 
 # 3 Getting Started
 
-Prerequisites:
-* mvn
-* JDK
-
-## 3.1 By parameters (Deprecated)
+## 3.1 Via CLI parameters
 ```bash
-chmod +x tools_localRepo
+chmod +x m2LocalRepoTools
 
-# Execute the deploy command, 
-# and the supported parameters are shown in the table below
-./tools_localRepo -s /opt/tmp/settings.xml -repo /opt/repo
+# display help information
+./m2LocalRepoTools -help
 
+# push artifacts to Nexus
+./m2LocalRepoTools [OPTIONS] push
+
+# clean local repository
+./m2LocalRepoTools [OPTIONS] clean
 ```
 
-| Parameter    | Default value                                  | Example               | Explain                              |
-|--------------|------------------------------------------------|-----------------------|--------------------------------------|
-| `-help`/`-h` | -                                              |                       | Display help information             |
-| `-s`         | ${HOME}/.m2/settings.xml                       | /opt/tmp/settings.xml |                                      |
-| `-repo`      | ${HOME}/.m2/repository                         | /opt/repo             |                                      |
-| `-url`       | http://nexus.yore.cn/repository/maven-releases |                       |                                      |
-| `-repoId`    | yore_nexus                                     |                       |                                      |
-| `-verbose`   | -                                              |                       | Output project debugging information |
-| `-X`         | -                                              |                       | Output maven debugging information   |
+Where `[OPTIONS]` are:
 
+| Parameter       | Default value            | Description                                                                                         |
+|-----------------|--------------------------|-----------------------------------------------------------------------------------------------------|
+| `-help`         | -                        | Display help information                                                                            |
+| `-repo`         | `${HOME}/.m2/repository` | Local repository path                                                                               |
+| `-releaseUrl`   | -                        | Nexus releases repository URL, for release versions only (at least one of three required)           |
+| `-snapshotsUrl` | -                        | Nexus snapshots repository URL, for snapshot versions only (at least one of three required)         |
+| `-mixedUrl`     | -                        | Nexus mixed repository URL, for both release and snapshot versions (at least one of three required) |
+| `-username`     | -                        | Nexus username                                                                                      |
+| `-password`     | -                        | Nexus password                                                                                      |
+| `-worker`       | 4                        | Number of parallel upload workers                                                                   |
+| `-verbose`      | -                        | Enable debug output                                                                                 |
 
-## 3.2 By yaml file
-Or through a configuration file with the parameter `--config`
+Version routing rules:
+* Release versions are uploaded to `releaseUrl` first; falls back to `mixedUrl` if not configured
+* Snapshot versions (ending with `-SNAPSHOT`) are uploaded to `snapshotsUrl` first; falls back to `mixedUrl` if not configured
+* If no suitable URL is available for the version type, the artifact will be skipped
+
+An example of pushing artifacts from a specified local repository directory:
 ```bash
-./tools_localRepo --config ./config.yaml
+./m2LocalRepoTools \
+  -repo ~/.m2/repository/org/antlr/ \
+  -releaseUrl http://localhost:8081/repository/maven-releases/ \
+  -snapshotsUrl http://localhost:8081/repository/maven-snapshots/ \
+  -username admin \
+  -password admin123 \
+  -worker 2 \
+  -verbose \
+  push
 ```
 
-For more configuration information, see configuration template file [`config.yaml.template`](static/config.yaml.template)
+## 3.2 Via YAML config file
+```bash
+# push local Maven repository artifacts to Nexus
+./m2LocalRepoTools --config ./config.yaml push
+
+# clean files matching the configured suffix list in local Maven repository
+./m2LocalRepoTools --config ./config.yaml clean
+```
+
+See [`config.yaml.template`](static/config.yaml.template) for full configuration:
 ```yaml
-# Output project debugging information
 verbose: false
 logLevel: "INFO"
-
-# The path to the local repository maven will use to store artifacts
 localRepository: "~/.m2/repository"
 
-deploy:
-  enable: true
-  commandName: "/usr/local/bin/mvn"
-  # Alternate path for the user settings file
-  settingXml: "~/.m2/settings.xml"
-  # The ID of the repository
-  id: "yore_nexus"
-  # The URL of the repository maven
-  url: "http://nexus.yore.cn/repository/maven-releases"
-  # Output maven debugging information
-  debug: false
-
-  # The list of file suffixes to be ignored
+push:
+  releaseUrl: "http://localhost:8081/repository/maven-releases"
+  snapshotsUrl: "http://localhost:8081/repository/maven-snapshots"
+  # mixedUrl: "http://localhost:8081/repository/maven-mixed"
+  username: "admin"
+  password: "admin123"
+  worker: 4
   excludeSuffixs:
     - ".DS_Store"
     - ".asc"
@@ -129,10 +141,9 @@ deploy:
     - ".xml"
 
 clean:
-  # If it is in cleaning mode, the list of file suffixes that will be cleaned up
-  enable: false
   suffixs:
     - ".DS_Store"
     - ".lastUpdated"
-
+  dirRegex:
+    - "${*.version}"
 ```

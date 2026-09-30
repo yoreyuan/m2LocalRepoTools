@@ -19,8 +19,31 @@ Dockerfile.cross
 
 !vendor/**/zz_generated.*
 
-# editor and IDE paraphernalia
+# IDE
+.vscode/
+repository/
+m2LocalRepoTools/
+m2LocalRepoTools-bin.zip
+
+### IntelliJ IDEA ###
 .idea
+*.iml
+*.ipr
+*.iws
 *.swp
 *.swo
 *~
+
+### Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# macOS 系统文件
+.DS_Store
+.AppleDouble
+.LSOverride

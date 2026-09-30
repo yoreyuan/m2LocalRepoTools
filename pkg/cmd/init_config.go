@@ -1,8 +1,9 @@
 package cmd
 
 import (
+	"yoreyuan/m2LocalRepoTools/pkg/config"
+
 	"github.com/rs/zerolog/log"
-	"yoreyuan/deploy-maven-localRepository/pkg/config"
 )
 
 func initConfig() error {

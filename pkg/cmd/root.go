@@ -1,12 +1,14 @@
 package cmd
 
 import (
-	"yoreyuan/deploy-maven-localRepository/pkg/mvn"
+	"github.com/rs/zerolog/log"
+	"yoreyuan/m2LocalRepoTools/pkg/mvn"
 )
 
 func Execute() {
 	err := initArgs()
 	if err != nil {
+		log.Error().Msg(err.Error())
 		return
 	}
 

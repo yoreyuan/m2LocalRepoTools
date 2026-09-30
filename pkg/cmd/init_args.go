@@ -4,31 +4,56 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"os"
 	"strings"
-	"yoreyuan/deploy-maven-localRepository/pkg/config"
-	"yoreyuan/deploy-maven-localRepository/pkg/constant"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+
+	"yoreyuan/m2LocalRepoTools/pkg/config"
+	"yoreyuan/m2LocalRepoTools/pkg/constant"
 )
 
+func extractCommand() string {
+	args := os.Args[1:]
+	for i := len(args) - 1; i >= 0; i-- {
+		arg := args[i]
+		if !strings.HasPrefix(arg, "-") {
+			if arg == "push" || arg == "clean" {
+				os.Args = append(os.Args[:i+1], os.Args[i+2:]...)
+				return arg
+			}
+		}
+	}
+	return ""
+}
+
 func initArgs() error {
+	command := extractCommand()
+
 	configFile := flag.String("config", "", "Configuration file path")
 
-	s := flag.String("s", "", "Alternate path for the user settings file")
 	repo := flag.String("repo", "", "The path to the local repository maven will use to store artifacts")
-	url := flag.String("url", "", "The URL of the repository maven")
-	repoId := flag.String("repoId", "", "The ID of the repository")
+	releaseUrl := flag.String("releaseUrl", "", "The URL of the nexus releases repository (releases only)")
+	snapshotsUrl := flag.String("snapshotsUrl", "", "The URL of the nexus snapshots repository (snapshots only)")
+	mixedUrl := flag.String("mixedUrl", "", "The URL of the nexus mixed repository (releases and snapshots)")
+	username := flag.String("username", "", "Nexus username")
+	password := flag.String("password", "", "Nexus password")
+	worker := flag.Int("worker", 4, "Number of parallel upload workers")
 
 	verbose := flag.Bool("verbose", false, "Enable app verbose mode")
-	mvnX := flag.Bool("X", false, "Produce execution debug output")
 	help := flag.Bool("help", false, "Display help information")
 
 	flag.Parse()
 
 	if *help {
-		flag.PrintDefaults()
-		return errors.New("print help")
+		printUsage()
+		os.Exit(0)
+	}
+
+	if command == "" {
+		printUsage()
+		return errors.New("subcommand is required: push or clean")
 	}
 
 	var conf *config.Config
@@ -46,34 +71,55 @@ func initArgs() error {
 			zerolog.SetGlobalLevel(zerolog.DebugLevel)
 			conf.Verbose = true
 		}
-		if *mvnX {
-			conf.MvnDebug = true
-		}
 
 		homeDir := getUserHomeDir()
-		conf.SettingXml = *s
 		conf.LocalRepository = *repo
-		if conf.SettingXml == "" {
-			conf.SettingXml = fmt.Sprintf("%s/.m2/settings.xml", homeDir)
-		}
-		log.Info().Msgf("setting xml is %s", conf.SettingXml)
-
 		if conf.LocalRepository == "" {
 			conf.LocalRepository = fmt.Sprintf("%s/.m2/repository", homeDir)
 		}
 		log.Info().Msgf("local repository is %s", conf.LocalRepository)
 
-		if *url != "" {
-			conf.RepoUrl = *url
+		if *releaseUrl != "" {
+			conf.Push.ReleaseUrl = *releaseUrl
 		}
-		log.Info().Msgf("repository url is %s", conf.RepoUrl)
+		if conf.Push.ReleaseUrl != "" {
+			log.Info().Msgf("releases repository url is %s", conf.Push.ReleaseUrl)
+		}
 
-		if *repoId != "" {
-			conf.RepoId = *repoId
+		if *snapshotsUrl != "" {
+			conf.Push.SnapshotsUrl = *snapshotsUrl
 		}
-		log.Info().Msgf("repository id is %s", conf.RepoId)
+		if conf.Push.SnapshotsUrl != "" {
+			log.Info().Msgf("snapshots repository url is %s", conf.Push.SnapshotsUrl)
+		}
+
+		if *mixedUrl != "" {
+			conf.Push.MixedUrl = *mixedUrl
+		}
+		if conf.Push.MixedUrl != "" {
+			log.Info().Msgf("mixed repository url is %s", conf.Push.MixedUrl)
+		}
+
+		if *username != "" {
+			conf.Push.Username = *username
+		}
+		if *password != "" {
+			conf.Push.Password = *password
+		}
+		if *worker > 0 {
+			conf.Push.Worker = *worker
+		}
+		log.Info().Msgf("upload workers: %d", conf.Push.Worker)
 
 		config.SetConfig(conf)
+	}
+
+	conf.Command = command
+
+	if command == "push" {
+		if conf.Push.ReleaseUrl == "" && conf.Push.SnapshotsUrl == "" && conf.Push.MixedUrl == "" {
+			return errors.New("at least one of -releaseUrl, -snapshotsUrl or -mixedUrl must be configured")
+		}
 	}
 
 	if strings.HasSuffix(conf.LocalRepository, constant.Separator) {
@@ -83,14 +129,19 @@ func initArgs() error {
 		newLocalRepository := strings.Replace(conf.LocalRepository, "~", getUserHomeDir(), 1)
 		conf.LocalRepository = newLocalRepository
 	}
-	if strings.HasPrefix(conf.SettingXml, "~") {
-		newSettingXml := strings.Replace(conf.SettingXml, "~", getUserHomeDir(), 1)
-		conf.SettingXml = newSettingXml
-	}
 
 	log.Info().Interface("config", conf).Msg("print config")
 
 	return nil
+}
+
+func printUsage() {
+	fmt.Fprintf(os.Stderr, "Usage: m2LocalRepoTools [OPTIONS] <command>\n\n")
+	fmt.Fprintf(os.Stderr, "Commands:\n")
+	fmt.Fprintf(os.Stderr, "  push    Upload local Maven artifacts to Nexus repository\n")
+	fmt.Fprintf(os.Stderr, "  clean   Clean files with specified suffixes in local repository\n\n")
+	fmt.Fprintf(os.Stderr, "OPTIONS:\n")
+	flag.PrintDefaults()
 }
 
 func getUserHomeDir() string {

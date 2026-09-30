@@ -1,37 +1,39 @@
 package config
 
 import (
+	"os"
+	"path/filepath"
+
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"os"
-	"path/filepath"
 )
 
 type Config struct {
 	Verbose         bool   `mapstructure:"verbose,default=false"`
 	LogLevel        string `yaml:"logLevel"`
 	LocalRepository string `mapstructure:"localRepository,default=~/.m2/repository"`
-	Deploy          `mapstructure:"deploy"`
+	Push            `mapstructure:"push"`
 	Clean           RepoClean `mapstructure:"clean"`
+	Command         string    `mapstructure:"-"`
 }
 
-type Deploy struct {
-	Enable         bool   `mapstructure:"enable,default=true"`
-	CommandName    string `mapstructure:"commandName,default=mvn"`
-	SettingXml     string `mapstructure:"settingXml,default=~/.m2/settings.xml"`
-	RepoId         string `mapstructure:"id,default=yore_nexus"`
-	RepoUrl        string `mapstructure:"url,default=http://nexus.yore.cn/repository/maven-releases"`
-	MvnDebug       bool   `mapstructure:"debug,default=false"`
+type Push struct {
+	ReleaseUrl     string `mapstructure:"releaseUrl"`
+	SnapshotsUrl   string `mapstructure:"snapshotsUrl"`
+	MixedUrl       string `mapstructure:"mixedUrl"`
+	Username       string `mapstructure:"username"`
+	Password       string `mapstructure:"password"`
+	Worker         int    `mapstructure:"worker,default=4"`
 	ExcludeSuffixs `mapstructure:"excludeSuffixs"`
 }
 
 type ExcludeSuffixs []string
 
 type RepoClean struct {
-	Enable       bool `mapstructure:"enable,default=false"`
 	CleanSuffixs `mapstructure:"suffixs"`
+	DirRegex     []string `mapstructure:"dirRegex"`
 }
 
 type CleanSuffixs []string
@@ -41,17 +43,16 @@ func NewDefaultConfig() *Config {
 		Verbose:         false,
 		LogLevel:        "INFO",
 		LocalRepository: "",
-		Deploy: Deploy{
-			Enable:         true,
-			CommandName:    "mvn",
-			SettingXml:     "",
-			RepoId:         "yore_nexus",
-			RepoUrl:        "http://nexus.yore.cn/repository/maven-releases",
-			MvnDebug:       false,
+		Push: Push{
+			ReleaseUrl:     "",
+			SnapshotsUrl:   "",
+			MixedUrl:       "",
+			Username:       "",
+			Password:       "",
+			Worker:         4,
 			ExcludeSuffixs: ExcludeSuffixs{},
 		},
 		Clean: RepoClean{
-			Enable:       false,
 			CleanSuffixs: CleanSuffixs{},
 		},
 	}

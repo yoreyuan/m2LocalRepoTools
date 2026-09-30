@@ -27,7 +27,27 @@ func doClean(dirs map[string]bool) error {
 			}
 		}
 	}
+
+	for dir := range *invalidDirSet.GetSet() {
+		err := os.RemoveAll(dir)
+		if err != nil {
+			log.Error().Err(err).Msgf("error deleting directory: %s", dir)
+			return err
+		}
+		log.Info().Msgf("directory deletion succeeded: %s", dir)
+	}
+
 	return nil
+}
+
+func matchDirRegex(name string) bool {
+	for _, pattern := range conf.Clean.DirRegex {
+		matched, err := filepath.Match(pattern, name)
+		if err == nil && matched {
+			return true
+		}
+	}
+	return false
 }
 
 func hashCleanSuffixs(fileName string) bool {

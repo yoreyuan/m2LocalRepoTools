@@ -15,19 +15,19 @@ func Run() {
 		log.Err(err).Msg("Exception when traversing files")
 	}
 
-	if conf.Clean.Enable {
+	switch conf.Command {
+	case "clean":
 		err = doClean(*pomDirSet.GetSet())
 		if err != nil {
 			log.Err(err).Msg("Exception during clean operation")
 		}
-		return
-	}
-
-	if conf.Deploy.Enable {
+	case "push":
 		err = executeMvn(*pomDirSet.GetSet())
 		if err != nil {
-			log.Err(err).Msg("Exception during mvn operation")
+			log.Err(err).Msg("Exception during push operation")
 		}
+	default:
+		log.Error().Msgf("unknown command: %s", conf.Command)
 	}
 }
 
@@ -60,6 +60,10 @@ func listFilesRecursively(dir string) error {
 
 		// If the entry is a directory, it calls itself recursively.
 		if entry.IsDir() {
+			if matchDirRegex(entry.Name()) {
+				invalidDirSet.Add(fullPath)
+				continue
+			}
 			err := listFilesRecursively(fullPath)
 			if err != nil {
 				return err
