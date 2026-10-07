@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 
-export PATH=$PATH:/usr/local/go/bin
+#export PATH=$PATH:/usr/local/go/bin
 export CGO_ENABLED=0
+go version 2>/dev/null
+if [ $? -ne 0 ]; then
+  echo "No available Go environment was found!"
+  exit 1
+fi
 
 OS_ARR=(
 "linux"
