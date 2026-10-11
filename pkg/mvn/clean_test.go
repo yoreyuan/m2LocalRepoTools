@@ -61,6 +61,12 @@ func TestMatchDirRegex(t *testing.T) {
 			dirName:  "${antlr4.version",
 			want:     false,
 		},
+		{
+			name:     "Match the specific folder name",
+			patterns: []string{"unknown"},
+			dirName:  "unknown",
+			want:     true,
+		},
 	}
 
 	for _, tt := range tests {
