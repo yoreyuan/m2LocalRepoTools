@@ -29,8 +29,8 @@ if [ -f "${dirName}-bin.zip" ]; then
   rm ${dirName}-bin.zip
 fi
 
-for osName in ${OS_ARR[@]}; do
-  for archName in ${ARCH_ARR[@]}; do
+for osName in "${OS_ARR[@]}"; do
+  for archName in "${ARCH_ARR[@]}"; do
     # skip unsupported combinations
     if [ "${osName}" = "windows" ] && [ "${archName}" = "arm" ]; then
       continue
